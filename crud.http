@@ -1,0 +1,217 @@
+@baseUrl = http://localhost:8080
+
+### Вход организатора и получение access-токена (200)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"username": "organizer@tournament.local", "password": "Organize2026!", "deviceId": "crud-http-client"}
+
+> {% client.global.set("crudAccessToken", response.body.accessToken); %}
+
+### Профиль организатора (200)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{crudAccessToken}}
+
+> {% client.global.set("organizerId", response.body.id); %}
+
+### Создать пользователя (201)
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Денис", "email": "crud-player@example.com", "password": "Player2026!"}
+
+> {% client.global.set("userId", response.body.id); %}
+
+### Все пользователи (200)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{crudAccessToken}}
+
+### Пользователь по id (200)
+GET {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Изменить пользователя (200)
+PATCH {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Денис Попов"}
+
+### Создать команду (201)
+POST {{baseUrl}}/api/teams
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Соколы", "captainId": {{userId}}, "memberIds": [{{organizerId}}]}
+
+> {% client.global.set("teamOneId", response.body.id); %}
+
+### Создать команду (201)
+POST {{baseUrl}}/api/teams
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Медведи", "captainId": {{userId}}, "memberIds": [{{organizerId}}]}
+
+> {% client.global.set("teamTwoId", response.body.id); %}
+
+### Все команды (200)
+GET {{baseUrl}}/api/teams
+Authorization: Bearer {{crudAccessToken}}
+
+### Команда по id (200)
+GET {{baseUrl}}/api/teams/{{teamOneId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Изменить команду (200)
+PATCH {{baseUrl}}/api/teams/{{teamOneId}}
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Соколы-2"}
+
+### Создать турнир (201)
+POST {{baseUrl}}/api/tournaments
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Тест CRUD", "teamLimit": 2}
+
+> {% client.global.set("tournamentId", response.body.id); %}
+
+### Все турниры (200)
+GET {{baseUrl}}/api/tournaments
+Authorization: Bearer {{crudAccessToken}}
+
+### Турнир по id (200)
+GET {{baseUrl}}/api/tournaments/{{tournamentId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Изменить турнир (200)
+PATCH {{baseUrl}}/api/tournaments/{{tournamentId}}
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Тест CRUD-2", "teamLimit": 3}
+
+### Дополнительный турнир для заявки (201)
+POST {{baseUrl}}/api/tournaments
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"name": "Заявки CRUD", "teamLimit": 2}
+
+> {% client.global.set("extraTournamentId", response.body.id); %}
+
+### Создать заявку (201)
+POST {{baseUrl}}/api/team-applications
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"teamId": {{teamOneId}}, "tournamentId": {{extraTournamentId}}}
+
+> {% client.global.set("applicationId", response.body.id); %}
+
+### Все заявки (200)
+GET {{baseUrl}}/api/team-applications
+Authorization: Bearer {{crudAccessToken}}
+
+### Заявка по id (200)
+GET {{baseUrl}}/api/team-applications/{{applicationId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Отклонить заявку через PATCH (200)
+PATCH {{baseUrl}}/api/team-applications/{{applicationId}}
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"status": "REJECTED"}
+
+### Удалить заявку (204)
+DELETE {{baseUrl}}/api/team-applications/{{applicationId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалить дополнительный турнир (204)
+DELETE {{baseUrl}}/api/tournaments/{{extraTournamentId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Подать заявку на основной турнир (201)
+POST {{baseUrl}}/api/team-applications
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"teamId": {{teamOneId}}, "tournamentId": {{tournamentId}}}
+
+> {% client.global.set("applicationOneId", response.body.id); %}
+
+### Допустить команду (200)
+POST {{baseUrl}}/api/team-applications/{{applicationOneId}}/approve
+Authorization: Bearer {{crudAccessToken}}
+
+### Подать заявку на основной турнир (201)
+POST {{baseUrl}}/api/team-applications
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"teamId": {{teamTwoId}}, "tournamentId": {{tournamentId}}}
+
+> {% client.global.set("applicationTwoId", response.body.id); %}
+
+### Допустить команду (200)
+POST {{baseUrl}}/api/team-applications/{{applicationTwoId}}/approve
+Authorization: Bearer {{crudAccessToken}}
+
+### Начать турнир для матчей (200)
+POST {{baseUrl}}/api/tournaments/{{tournamentId}}/start
+Authorization: Bearer {{crudAccessToken}}
+
+### Создать дополнительный матч (201)
+POST {{baseUrl}}/api/matches
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"tournamentId": {{tournamentId}}, "team1Id": {{teamOneId}}, "team2Id": {{teamTwoId}}}
+
+> {% client.global.set("matchId", response.body.id); %}
+
+### Все матчи (200)
+GET {{baseUrl}}/api/matches
+Authorization: Bearer {{crudAccessToken}}
+
+### Матч по id (200)
+GET {{baseUrl}}/api/matches/{{matchId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Изменить счёт несыгранного матча (200)
+PATCH {{baseUrl}}/api/matches/{{matchId}}
+Authorization: Bearer {{crudAccessToken}}
+Content-Type: application/json
+
+{"score1": 1, "score2": 0}
+
+### Удалить матч (204)
+DELETE {{baseUrl}}/api/matches/{{matchId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалить турнир со связанными данными (204)
+DELETE {{baseUrl}}/api/tournaments/{{tournamentId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалить команду (204)
+DELETE {{baseUrl}}/api/teams/{{teamOneId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалить команду (204)
+DELETE {{baseUrl}}/api/teams/{{teamTwoId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалить пользователя (204)
+DELETE {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{crudAccessToken}}
+
+### Удалённый пользователь не найден (404)
+GET {{baseUrl}}/api/users/{{userId}}
+Authorization: Bearer {{crudAccessToken}}
+
+

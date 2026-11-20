@@ -1,0 +1,121 @@
+@baseUrl = http://127.0.0.1:8080
+@organizer = organizer@tournament.local
+@organizerPassword = Organize2026!
+@deviceId = idea-http-client
+@newUserEmail = lab5.player@tournament.local
+
+### 1. Вход и выдача первой ACTIVE-сессии (200)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{organizer}}",
+  "password": "{{organizerPassword}}",
+  "deviceId": "{{deviceId}}"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("oldRefreshToken", response.body.refreshToken);
+%}
+
+### 2. Доступ к защищённому endpoint с access (200)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{accessToken}}
+
+### 3. Обновление пары: старая сессия станет USED, новая ACTIVE (200)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{oldRefreshToken}}"
+}
+
+> {%
+    client.global.set("newAccessToken", response.body.accessToken);
+    client.global.set("newRefreshToken", response.body.refreshToken);
+%}
+
+### 4. Новая пара работает (200)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{newAccessToken}}
+
+### 5. Повторное использование старого refresh: USED станет REVOKED (401)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{oldRefreshToken}}"
+}
+
+### 6. Access-токен нельзя использовать для обновления (401)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{newAccessToken}}"
+}
+
+### 7. Refresh-токен нельзя передавать как Bearer access (401)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{newRefreshToken}}
+
+### 8. Запрос без аутентификации (401)
+GET {{baseUrl}}/api/account/me
+
+### 9. Неверный пароль (401)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{organizer}}",
+  "password": "wrong-password",
+  "deviceId": "{{deviceId}}"
+}
+
+### 10. Пустое обязательное поле (400)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": ""
+}
+
+### 11. Регистрация сразу возвращает пару и создаёт ACTIVE-сессию (201)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Игрок пятой лабораторной",
+  "email": "{{newUserEmail}}",
+  "password": "Player2026!",
+  "deviceId": "friend-laptop"
+}
+
+> {%
+    client.global.set("playerAccessToken", response.body.accessToken);
+    client.global.set("playerRefreshToken", response.body.refreshToken);
+%}
+
+### 12. Повторная регистрация того же email (409)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Дубликат",
+  "email": "{{newUserEmail}}",
+  "password": "Player2026!",
+  "deviceId": "friend-laptop"
+}
+
+### 13. Access зарегистрированного пользователя работает (200)
+GET {{baseUrl}}/api/account/me
+Authorization: Bearer {{playerAccessToken}}
+
+### 14. Refresh зарегистрированного пользователя обновляет пару (200)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{playerRefreshToken}}"
+}
